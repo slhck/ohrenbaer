@@ -1,6 +1,8 @@
 # Ohrenbär Podcast Tools
 
-![](logo.png)
+<div style="text-align: center;">
+<img src="logo.png" width="200" height="200">
+</div>
 
 A set of tools to scrape and download Ohrenbär podcasts from [ohrenbaer.de](https://www.ohrenbaer.de).
 
