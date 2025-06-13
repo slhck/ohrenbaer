@@ -85,6 +85,9 @@ yarn download -d my-podcasts
 # Filter podcasts by title (case-insensitive regex)
 yarn download -f "komplette"
 
+# Convert to M4A (AAC) to save space
+yarn download -c
+
 # Download only sequentially
 yarn download -p 1
 
@@ -99,6 +102,7 @@ yarn download --dry-run
 
 - `-i, --input`: Input JSON file (default: podcasts.json)
 - `-d, --download-dir`: Download directory (default: downloads)
+- `-c, --convert`: Convert to M4A (AAC) to save space (requires ffmpeg)
 - `-f, --filter`: Case-insensitive regex pattern to filter podcast titles
 - `-p, --parallel`: Number of parallel downloads (default: 8)
 - `--force`: Overwrite existing files

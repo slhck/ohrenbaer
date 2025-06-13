@@ -1,3 +1,4 @@
+import { execFileSync, execSync } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { access, mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -52,6 +53,13 @@ const argv = yargs(hideBin(process.argv))
     "dry-run": {
       alias: "n",
       describe: "Do not download anything, just print the URLs",
+      type: "boolean",
+      default: false,
+    },
+    convert: {
+      alias: "c",
+      describe:
+        "Convert the downloaded files to M4A (AAC) to save space (requires ffmpeg)",
       type: "boolean",
       default: false,
     },
@@ -131,11 +139,45 @@ async function downloadFile(
   return true; // file downloaded
 }
 
+async function convertToM4A(
+  inputPath: string,
+  dryRun: boolean,
+  force: boolean,
+): Promise<boolean> {
+  const outputPath = inputPath.replace(/\.mp3$/, ".m4a");
+
+  if (!force && (await fileExists(outputPath))) {
+    return false; // file skipped
+  }
+
+  // 96 kBit/s is plenty for the podcast
+  if (dryRun) {
+    console.log(`Would convert ${inputPath} to ${outputPath}`);
+  } else {
+    execFileSync("ffmpeg", [
+      "-i", inputPath,
+      "-c:a", "aac",
+      "-b:a", "96k",
+      outputPath
+    ]);
+  }
+
+  return true; // file converted
+}
+
 async function main() {
   try {
     // read and parse JSON file
     const jsonContent = await readFile(argv.input, "utf-8");
     let podcasts: Podcast[] = JSON.parse(jsonContent);
+
+    // check if ffmpeg is installed
+    try {
+      execSync("ffmpeg -version");
+    } catch (error) {
+      console.error("ffmpeg is not installed");
+      process.exit(1);
+    }
 
     // apply filter if specified
     if (argv.filter) {
@@ -182,10 +224,22 @@ async function main() {
             argv.force,
             argv["dry-run"],
           );
-          progressBar.tick({
-            file: filename,
-            status: wasDownloaded ? "downloaded" : "skipped",
-          });
+          if (argv.convert) {
+            const wasConverted = await convertToM4A(
+              outputPath,
+              argv["dry-run"],
+              argv.force,
+            );
+            progressBar.tick({
+              file: filename,
+              status: wasConverted ? "converted" : "skipped",
+            });
+          } else {
+            progressBar.tick({
+              file: filename,
+              status: wasDownloaded ? "downloaded" : "skipped",
+            });
+          }
         } catch (error) {
           console.error(`\nFailed to download ${podcast.title}:`, error);
         }
