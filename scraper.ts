@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
 import ProgressBar from "progress";
@@ -136,13 +138,58 @@ async function scrapePodcasts(): Promise<Podcast[]> {
   }
 }
 
+async function readExistingPodcasts(filePath: string): Promise<Podcast[]> {
+  try {
+    if (!existsSync(filePath)) {
+      return [];
+    }
+    const fileContent = await readFile(filePath, 'utf-8');
+    return JSON.parse(fileContent) as Podcast[];
+  } catch (error) {
+    console.error("Error reading existing podcasts:", error);
+    return [];
+  }
+}
+
+async function mergePodcasts(existing: Podcast[], newPodcasts: Podcast[]): Promise<Podcast[]> {
+  // create a set of existing podcast identifiers (title + releaseDate is unique)
+  const existingSet = new Set(
+    existing.map(p => `${p.title}|${p.releaseDate}`)
+  );
+
+  // filter out podcasts that already exist
+  const uniqueNewPodcasts = newPodcasts.filter(
+    p => !existingSet.has(`${p.title}|${p.releaseDate}`)
+  );
+
+  if (uniqueNewPodcasts.length > 0) {
+    console.log(`Found ${uniqueNewPodcasts.length} new podcasts`);
+  } else {
+    console.log("No new podcasts found");
+  }
+
+  // combine existing and new podcasts
+  return [...existing, ...uniqueNewPodcasts];
+}
+
 async function main() {
   try {
-    const podcasts = await scrapePodcasts();
     const outputPath = resolve(argv.output);
-    await writeFile(outputPath, JSON.stringify(podcasts, null, 2));
+
+    // read existing podcasts if file exists
+    const existingPodcasts = await readExistingPodcasts(outputPath);
+    console.log(`Found ${existingPodcasts.length} existing podcasts`);
+
+    // scrape new podcasts
+    const newPodcasts = await scrapePodcasts();
+
+    // merge existing and new podcasts
+    const mergedPodcasts = await mergePodcasts(existingPodcasts, newPodcasts);
+
+    // save merged podcasts
+    await writeFile(outputPath, JSON.stringify(mergedPodcasts, null, 2));
     console.log(
-      `Successfully saved ${podcasts.length} podcasts to ${outputPath}`,
+      `Successfully saved ${mergedPodcasts.length} podcasts to ${outputPath}`,
     );
   } catch (error) {
     console.error("Failed to save podcasts:", error);
