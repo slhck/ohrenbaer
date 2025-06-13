@@ -1,5 +1,7 @@
 # Ohrenbär Podcast Tools
 
+![](logo.png)
+
 A set of tools to scrape and download Ohrenbär podcasts from [ohrenbaer.de](https://www.ohrenbaer.de).
 
 The downloads are freely available to the public, so this tool just automates the process to make it easier to archive them for your own use.
