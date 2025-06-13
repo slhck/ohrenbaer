@@ -65,6 +65,8 @@ yarn scrape -o my-podcasts.json
 yarn scrape --no-headless
 ```
 
+If the JSON file already exists, the scraper will merge the new podcasts with the existing ones. So you can just continue updating the file when you want to.
+
 ### Downloading Podcasts
 
 The downloader tool takes the JSON file produced by the scraper and downloads the podcasts.
