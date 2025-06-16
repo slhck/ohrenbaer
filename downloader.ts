@@ -1,6 +1,6 @@
 import { execFileSync, execSync } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { access, mkdir, readFile } from "node:fs/promises";
+import { createWriteStream, existsSync, unlinkSync } from "node:fs";
+import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -94,16 +94,6 @@ function sanitizeFilename(filename: string): string {
     .replace(/\s+/g, "_"); // replace spaces with underscore
 }
 
-// check if file exists
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function downloadFile(
   url: string,
   outputPath: string,
@@ -111,7 +101,13 @@ async function downloadFile(
   dryRun: boolean,
 ): Promise<boolean> {
   // skip if file exists and not forcing
-  if (!force && (await fileExists(outputPath))) {
+  if (!force && existsSync(outputPath)) {
+    return false; // file skipped
+  }
+
+  // also check if the output path exists with an .m4a extension;
+  // we don't want to re-download converted files
+  if (!force && existsSync(outputPath.replace(/\.mp3$/, ".m4a"))) {
     return false; // file skipped
   }
 
@@ -146,7 +142,7 @@ async function convertToM4A(
 ): Promise<boolean> {
   const outputPath = inputPath.replace(/\.mp3$/, ".m4a");
 
-  if (!force && (await fileExists(outputPath))) {
+  if (!force && existsSync(outputPath)) {
     return false; // file skipped
   }
 
@@ -158,8 +154,10 @@ async function convertToM4A(
       "-i", inputPath,
       "-c:a", "aac",
       "-b:a", "96k",
-      outputPath
+      outputPath,
     ]);
+    // remove the original file
+    unlinkSync(inputPath);
   }
 
   return true; // file converted
